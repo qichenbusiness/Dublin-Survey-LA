@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import SurveyLayout from '@/components/SurveyLayout'
 import { BestFeature } from '@/types/survey'
 
-export default function Step3() {
+function Step3Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
@@ -221,5 +221,22 @@ export default function Step3() {
         )}
       </form>
     </SurveyLayout>
+  )
+}
+
+export default function Step3() {
+  return (
+    <Suspense
+      fallback={
+        <SurveyLayout>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </SurveyLayout>
+      }
+    >
+      <Step3Content />
+    </Suspense>
   )
 }

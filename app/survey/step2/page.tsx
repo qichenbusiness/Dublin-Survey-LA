@@ -1,9 +1,10 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import SurveyLayout from '@/components/SurveyLayout'
 
-export default function Step2() {
+function Step2Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const range = searchParams.get('range')
@@ -70,5 +71,22 @@ export default function Step2() {
         </div>
       </div>
     </SurveyLayout>
+  )
+}
+
+export default function Step2() {
+  return (
+    <Suspense
+      fallback={
+        <SurveyLayout>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </SurveyLayout>
+      }
+    >
+      <Step2Content />
+    </Suspense>
   )
 }
