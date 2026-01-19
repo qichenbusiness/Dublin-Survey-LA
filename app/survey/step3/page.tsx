@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import SurveyLayout from '@/components/SurveyLayout'
@@ -14,27 +14,38 @@ function Step3Content() {
   const [specificPrice, setSpecificPrice] = useState<string>('')
   const [bestFeature, setBestFeature] = useState<BestFeature | ''>('')
   const [improvementNote, setImprovementNote] = useState<string>('')
+  const [initialRange, setInitialRange] = useState<string>('')
+  const [isLoadingRange, setIsLoadingRange] = useState(true)
 
-  const range = searchParams.get('range') || ''
+  const rangeFromUrl = searchParams.get('range')
   const email = searchParams.get('email')
 
   // Generate $20k increments based on the selected range
   const generatePriceIncrements = (selectedRange: string): string[] => {
     const increments: string[] = []
     
-    if (selectedRange === '$601k–$700k') {
+    // Normalize the range string to handle potential variations
+    const normalizedRange = selectedRange.trim()
+    
+    if (normalizedRange === '$601k–$700k' || normalizedRange.includes('601') && normalizedRange.includes('700')) {
       for (let start = 601; start <= 681; start += 20) {
         const end = Math.min(start + 19, 700)
         increments.push(`$${start}k–$${end}k`)
       }
-    } else if (selectedRange === '$501k–$600k') {
+    } else if (normalizedRange === '$501k–$600k' || normalizedRange.includes('501') && normalizedRange.includes('600')) {
       for (let start = 501; start <= 581; start += 20) {
         const end = Math.min(start + 19, 600)
         increments.push(`$${start}k–$${end}k`)
       }
-    } else if (selectedRange === '$401k–$500k') {
+    } else if (normalizedRange === '$401k–$500k' || normalizedRange.includes('401') && normalizedRange.includes('500')) {
       for (let start = 401; start <= 481; start += 20) {
         const end = Math.min(start + 19, 500)
+        increments.push(`$${start}k–$${end}k`)
+      }
+    } else {
+      // Default fallback: show $501k–$600k sub-ranges
+      for (let start = 501; start <= 581; start += 20) {
+        const end = Math.min(start + 19, 600)
         increments.push(`$${start}k–$${end}k`)
       }
     }
@@ -42,7 +53,65 @@ function Step3Content() {
     return increments
   }
 
-  const priceIncrements = generatePriceIncrements(range)
+  // Fetch initial_range from Supabase if not in URL
+  useEffect(() => {
+    const fetchInitialRange = async () => {
+      if (rangeFromUrl) {
+        setInitialRange(rangeFromUrl)
+        setIsLoadingRange(false)
+        return
+      }
+
+      // Try to fetch from Supabase using email
+      if (email) {
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('responses')
+            .select('initial_range')
+            .eq('agent_email', email)
+            .not('initial_range', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (!fetchError && data?.initial_range) {
+            setInitialRange(data.initial_range)
+            setIsLoadingRange(false)
+            return
+          }
+        } catch (err) {
+          console.error('Error fetching initial range:', err)
+        }
+      }
+
+      // Fallback: try without email (get most recent response)
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('responses')
+          .select('initial_range')
+          .not('initial_range', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (!fetchError && data?.initial_range) {
+          setInitialRange(data.initial_range)
+          setIsLoadingRange(false)
+          return
+        }
+      } catch (err) {
+        console.error('Error fetching initial range:', err)
+      }
+
+      // Final fallback: use default range
+      setInitialRange('$501k–$600k')
+      setIsLoadingRange(false)
+    }
+
+    fetchInitialRange()
+  }, [rangeFromUrl, email])
+
+  const priceIncrements = generatePriceIncrements(initialRange)
   const bestFeatureOptions: BestFeature[] = ['Location', 'Layout', 'Condition/Updates', 'Yard/Lot', 'Price']
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,10 +127,11 @@ function Step3Content() {
 
     try {
       // Find the most recent response with this range and email to update
+      const rangeToUse = initialRange || rangeFromUrl || '$501k–$600k'
       let query = supabase
         .from('responses')
         .select('id')
-        .eq('initial_range', range)
+        .eq('initial_range', rangeToUse)
         .order('created_at', { ascending: false })
         .limit(1)
 
@@ -88,7 +158,7 @@ function Step3Content() {
         const { error: insertError } = await supabase
           .from('responses')
           .insert({
-            initial_range: range,
+            initial_range: rangeToUse,
             specific_price: specificPrice,
             best_feature: bestFeature,
             improvement_note: improvementNote || null,
@@ -125,25 +195,36 @@ function Step3Content() {
           <label className="block text-lg font-semibold text-gray-900">
             What is a more specific price range you would suggest?
           </label>
-          <div className="space-y-3">
-            {priceIncrements.map((increment) => (
-              <label
-                key={increment}
-                className="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-navy transition-colors"
-              >
-                <input
-                  type="radio"
-                  name="specificPrice"
-                  value={increment}
-                  checked={specificPrice === increment}
-                  onChange={(e) => setSpecificPrice(e.target.value)}
-                  className="w-5 h-5 text-navy focus:ring-navy focus:ring-2"
-                  required
-                />
-                <span className="ml-3 text-lg text-gray-900">{increment}</span>
-              </label>
-            ))}
-          </div>
+          {isLoadingRange ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-navy mx-auto"></div>
+              <p className="mt-2 text-gray-600 text-sm">Loading price ranges...</p>
+            </div>
+          ) : priceIncrements.length > 0 ? (
+            <div className="space-y-3">
+              {priceIncrements.map((increment) => (
+                <label
+                  key={increment}
+                  className="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-navy transition-colors"
+                >
+                  <input
+                    type="radio"
+                    name="specificPrice"
+                    value={increment}
+                    checked={specificPrice === increment}
+                    onChange={(e) => setSpecificPrice(e.target.value)}
+                    className="w-5 h-5 text-navy focus:ring-navy focus:ring-2"
+                    required
+                  />
+                  <span className="ml-3 text-lg text-gray-900">{increment}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+              Unable to load price ranges. Please try refreshing the page.
+            </div>
+          )}
         </div>
 
         {/* Q2: The Why */}
