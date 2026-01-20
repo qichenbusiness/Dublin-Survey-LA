@@ -14,6 +14,26 @@ export default function AdminDashboard() {
     fetchResponses()
   }, [])
 
+  // Format UTC timestamp to Arizona/Phoenix timezone
+  const formatArizonaTime = (utcTimestamp: string): string => {
+    try {
+      const date = new Date(utcTimestamp)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Phoenix',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+      return formatter.format(date)
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Invalid date'
+    }
+  }
+
   const fetchResponses = async () => {
     try {
       const { data, error: fetchError } = await supabase
@@ -188,13 +208,7 @@ export default function AdminDashboard() {
                   <p className="text-gray-900 mb-2">{response.improvement_note}</p>
                   <p className="text-sm text-gray-500">
                     {response.created_at
-                      ? new Date(response.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
+                      ? formatArizonaTime(response.created_at)
                       : 'No date available'}
                     {response.agent_email && ` • ${response.agent_email}`}
                   </p>
