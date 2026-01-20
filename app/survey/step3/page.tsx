@@ -186,7 +186,7 @@ function Step3Content() {
 
       // Update the specific row with follow-up answers
       console.log('Updating response ID:', existingResponse.id)
-      const { data: updatedResponse, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('responses')
         .update({
           specific_price: specificPrice,
@@ -194,24 +194,17 @@ function Step3Content() {
           improvement_note: improvementNote || null,
         })
         .eq('id', existingResponse.id)
-        .select()
 
       if (updateError) {
         console.error('ERROR updating response:', updateError)
         throw updateError
       }
 
-      if (updatedResponse && updatedResponse.length > 0) {
-        console.log('SUCCESS: Response updated successfully:', updatedResponse[0])
-        console.log('=== Step 3 Submit Complete ===')
-        
-        // Redirect to Success page
-        router.push('/survey/success')
-      } else {
-        console.error('ERROR: Update succeeded but no data returned')
-        setError('Update completed but verification failed. Please check the dashboard.')
-        setLoading(false)
-      }
+      console.log('SUCCESS: Update command sent successfully')
+      console.log('=== Step 3 Submit Complete ===')
+      
+      // Redirect to Success page immediately
+      router.push('/survey/success')
     } catch (err) {
       console.error('ERROR in handleSubmit catch block:', err)
       setError('Something went wrong. Please try again.')
