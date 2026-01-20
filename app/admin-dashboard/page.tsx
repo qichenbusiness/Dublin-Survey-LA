@@ -194,7 +194,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* All Comments */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="text-xl font-bold text-navy mb-4">
             All Improvement Comments ({allComments.length})
           </h3>
@@ -217,6 +217,82 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <p className="text-gray-500">No improvement comments yet.</p>
+          )}
+        </div>
+
+        {/* Detailed Responses Table */}
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
+          <h3 className="text-xl font-bold text-navy mb-4">
+            All Survey Responses ({responses.length})
+          </h3>
+          {responses.length > 0 ? (
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <div className="overflow-hidden border border-gray-200 rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Agent Email
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Initial Range
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Specific Price
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Best Feature
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Improvement Note
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                          Date (Arizona)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {responses.map((response, index) => (
+                        <tr
+                          key={response.id || index}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {response.agent_email || <span className="text-gray-400 italic">Not provided</span>}
+                          </td>
+                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {response.initial_range || <span className="text-gray-400 italic">—</span>}
+                          </td>
+                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {response.specific_price || <span className="text-gray-400 italic">—</span>}
+                          </td>
+                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {response.best_feature || <span className="text-gray-400 italic">—</span>}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-900 max-w-xs">
+                            {response.improvement_note ? (
+                              <div className="max-w-xs truncate" title={response.improvement_note}>
+                                {response.improvement_note}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {response.created_at
+                              ? formatArizonaTime(response.created_at)
+                              : <span className="text-gray-400 italic">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500">No responses yet.</p>
           )}
         </div>
       </div>
