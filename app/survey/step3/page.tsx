@@ -126,23 +126,57 @@ function Step3Content() {
     setError(null)
 
     try {
-      // Find the most recent response with this range and email to update
       const rangeToUse = initialRange || rangeFromUrl || '$501k–$600k'
-      let query = supabase
-        .from('responses')
-        .select('id')
-        .eq('initial_range', rangeToUse)
-        .order('created_at', { ascending: false })
-        .limit(1)
+      let existingResponseId: string | null = null
 
+      // Strategy 1: If email exists, find the most recent response for that email
       if (email) {
-        query = query.eq('agent_email', email)
+        const { data: emailResponse, error: emailError } = await supabase
+          .from('responses')
+          .select('id')
+          .eq('agent_email', email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!emailError && emailResponse?.id) {
+          existingResponseId = emailResponse.id
+        }
       }
 
-      const { data: existingResponse, error: fetchError } = await query.single()
+      // Strategy 2: If no email match found, try by initial_range and email combination
+      if (!existingResponseId && email && rangeToUse) {
+        const { data: rangeEmailResponse, error: rangeEmailError } = await supabase
+          .from('responses')
+          .select('id')
+          .eq('agent_email', email)
+          .eq('initial_range', rangeToUse)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (existingResponse) {
-        // Update existing response
+        if (!rangeEmailError && rangeEmailResponse?.id) {
+          existingResponseId = rangeEmailResponse.id
+        }
+      }
+
+      // Strategy 3: If still no match and no email, try by initial_range only
+      if (!existingResponseId && !email && rangeToUse) {
+        const { data: rangeResponse, error: rangeError } = await supabase
+          .from('responses')
+          .select('id')
+          .eq('initial_range', rangeToUse)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!rangeError && rangeResponse?.id) {
+          existingResponseId = rangeResponse.id
+        }
+      }
+
+      // Update existing response if found
+      if (existingResponseId) {
         const { error: updateError } = await supabase
           .from('responses')
           .update({
@@ -150,11 +184,14 @@ function Step3Content() {
             best_feature: bestFeature,
             improvement_note: improvementNote || null,
           })
-          .eq('id', existingResponse.id)
+          .eq('id', existingResponseId)
 
-        if (updateError) throw updateError
+        if (updateError) {
+          console.error('Update error:', updateError)
+          throw updateError
+        }
       } else {
-        // Create new response if somehow it doesn't exist
+        // Create new response if no existing one found
         const { error: insertError } = await supabase
           .from('responses')
           .insert({
@@ -165,7 +202,10 @@ function Step3Content() {
             agent_email: email || null,
           })
 
-        if (insertError) throw insertError
+        if (insertError) {
+          console.error('Insert error:', insertError)
+          throw insertError
+        }
       }
 
       // Redirect to Success page
